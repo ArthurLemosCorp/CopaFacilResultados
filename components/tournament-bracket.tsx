@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, type CSSProperties } from "react"
 import Image from "next/image"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, Trophy } from "lucide-react"
 import { ParticipantCard } from "./participant-card"
 import { type Carteira, type Participant, getAllCarteiras, continents } from "./world-map"
 
@@ -169,11 +169,100 @@ interface TournamentBracketProps {
   onBack: () => void
 }
 
+// --- Ranking helpers ---
+
+interface RankingEntry {
+  participant: Participant
+  goals: number
+  matches: number
+}
+
+function buildRanking(tournament: Tournament): RankingEntry[] {
+  const goalsMap: Record<string, number> = {}
+  const matchesMap: Record<string, number> = {}
+
+  const allMatches = [
+    ...tournament.matches.round1,
+    ...tournament.matches.round2,
+    ...tournament.matches.semifinals,
+    ...tournament.matches.final,
+  ]
+
+  for (const match of allMatches) {
+    if (match.participant1 && match.score1 !== undefined) {
+      goalsMap[match.participant1.id] = (goalsMap[match.participant1.id] ?? 0) + match.score1
+      matchesMap[match.participant1.id] = (matchesMap[match.participant1.id] ?? 0) + 1
+    }
+    if (match.participant2 && match.score2 !== undefined) {
+      goalsMap[match.participant2.id] = (goalsMap[match.participant2.id] ?? 0) + match.score2
+      matchesMap[match.participant2.id] = (matchesMap[match.participant2.id] ?? 0) + 1
+    }
+  }
+
+  return tournament.participants
+    .map((p) => ({
+      participant: p,
+      goals: goalsMap[p.id] ?? 0,
+      matches: matchesMap[p.id] ?? 0,
+    }))
+    .sort((a, b) => b.goals - a.goals)
+}
+
+function getFlagEmoji(countryCode: string): string {
+  const codePoints = countryCode.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0))
+  return String.fromCodePoint(...codePoints)
+}
+
+function RankingPanel({ tournament, continentColor }: { tournament: Tournament; continentColor?: string }) {
+  const ranking = useMemo(() => buildRanking(tournament), [tournament])
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-4 py-3 border-b border-border">
+        <p className="text-sm font-semibold text-foreground">Ranking de Gols</p>
+        <p className="text-xs text-muted-foreground">{tournament.name}</p>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {ranking.map((entry, i) => (
+          <div
+            key={entry.participant.id}
+            className={`flex items-center gap-3 px-4 py-2.5 border-b border-border/50 last:border-0 ${
+              entry.participant.eliminated ? "opacity-50" : ""
+            }`}
+          >
+            {/* Position */}
+            <span
+              className="w-5 text-center text-xs font-bold shrink-0"
+              style={{ color: i < 3 ? continentColor : undefined }}
+            >
+              {i + 1}
+            </span>
+            {/* Flag */}
+            <span className="text-lg shrink-0">{getFlagEmoji(entry.participant.countryCode)}</span>
+            {/* Name */}
+            <span className="flex-1 text-xs font-medium text-foreground truncate">
+              {entry.participant.name}
+            </span>
+            {/* Goals */}
+            <span
+              className="text-sm font-bold shrink-0"
+              style={{ color: continentColor }}
+            >
+              {entry.goals}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export function TournamentBracket({ selectedCarteira, onBack }: TournamentBracketProps) {
   const allCarteiras = useMemo(() => getAllCarteiras(), [])
   
   const [currentCarteiraId, setCurrentCarteiraId] = useState(selectedCarteira.id)
   const [bracketZoom, setBracketZoom] = useState(1)
+  const [rankingOpen, setRankingOpen] = useState(false)
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({})
   
   const currentCarteira = useMemo(() => 
@@ -250,7 +339,6 @@ export function TournamentBracket({ selectedCarteira, onBack }: TournamentBracke
           aria-hidden="true"
         />
       </div>
-      {/* Header */}
       <header className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm border-b border-border">
         <div className="container mx-auto px-3 py-3 md:px-4 md:py-4">
           <div className="grid gap-3 md:grid-cols-[auto_1fr_auto] md:items-center">
@@ -451,7 +539,7 @@ export function TournamentBracket({ selectedCarteira, onBack }: TournamentBracke
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="sticky bottom-0 bg-card/95 backdrop-blur-sm border-t border-border">
+      <nav className="sticky bottom-0 z-10 bg-card/95 backdrop-blur-sm border-t border-border">
         <div className="container mx-auto px-3 py-3 md:px-4">
           <div className="mx-auto flex max-w-md items-center justify-between gap-3">
             <button
@@ -496,16 +584,50 @@ export function TournamentBracket({ selectedCarteira, onBack }: TournamentBracke
           </div>
         </div>
       </nav>
+
+      {/* Ranking sidebar — desktop/tablet only */}
+      <aside className="hidden lg:flex fixed right-0 top-0 h-full w-64 flex-col border-l border-border bg-card/95 backdrop-blur-sm z-20">
+        <RankingPanel tournament={tournament} continentColor={continent?.color} />
+      </aside>
+
+      {/* Ranking button — mobile only */}
+      <button
+        type="button"
+        onClick={() => setRankingOpen(true)}
+        className="lg:hidden fixed right-4 bottom-24 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card shadow-lg"
+        style={{ color: continent?.color }}
+        aria-label="Ver ranking de gols"
+      >
+        <Trophy className="w-5 h-5" />
+      </button>
+
+      {/* Ranking modal — mobile only */}
+      {rankingOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex items-end">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setRankingOpen(false)}
+          />
+          <div className="relative w-full max-h-[75vh] rounded-t-2xl border-t border-border bg-card flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <p className="text-sm font-semibold text-foreground">Ranking de Gols</p>
+              <button
+                type="button"
+                onClick={() => setRankingOpen(false)}
+                className="text-muted-foreground hover:text-foreground text-lg leading-none"
+                aria-label="Fechar ranking"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1">
+              <RankingPanel tournament={tournament} continentColor={continent?.color} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
-}
-
-function getFlagEmoji(countryCode: string): string {
-  const codePoints = countryCode
-    .toUpperCase()
-    .split('')
-    .map(char => 127397 + char.charCodeAt(0))
-  return String.fromCodePoint(...codePoints)
 }
 
 function MatchCard({ match, isFinal = false, continentColor }: { match: Match; isFinal?: boolean; continentColor?: string }) {

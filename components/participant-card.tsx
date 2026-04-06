@@ -73,15 +73,12 @@ export function ParticipantCard({ participant, isWinner, score }: ParticipantCar
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center text-foreground font-bold text-sm md:text-base">
-              {participant.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center text-xl md:text-2xl">
+              {getFlag(participant.countryCode)}
             </div>
           )}
         </div>
-        {/* Country Flag Badge */}
-        <div className="absolute -bottom-1 -right-1 w-5 h-5 md:w-6 md:h-6 rounded-full bg-card border border-border flex items-center justify-center text-xs md:text-sm shadow-sm">
-          {getFlag(participant.countryCode)}
-        </div>
+        {/* Country Flag Badge removed — flag is shown in avatar */}
       </div>
 
       {/* Info */}
