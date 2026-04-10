@@ -585,16 +585,16 @@ export function TournamentBracket({ selectedCarteira, onBack }: TournamentBracke
         </div>
       </nav>
 
-      {/* Ranking sidebar — desktop/tablet only */}
-      <aside className="hidden lg:flex fixed right-0 top-0 h-full w-64 flex-col border-l border-border bg-card/95 backdrop-blur-sm z-20">
+      {/* Ranking card — desktop/tablet: floating panel top-right */}
+      <div className="hidden lg:flex fixed right-4 top-24 z-20 w-64 flex-col rounded-2xl border border-border bg-card/95 backdrop-blur-sm shadow-xl overflow-hidden max-h-[420px]">
         <RankingPanel tournament={tournament} continentColor={continent?.color} />
-      </aside>
+      </div>
 
-      {/* Ranking button — mobile only */}
+      {/* Ranking button — mobile only, top-right */}
       <button
         type="button"
         onClick={() => setRankingOpen(true)}
-        className="lg:hidden fixed right-4 bottom-24 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card shadow-lg"
+        className="lg:hidden fixed right-4 top-20 z-20 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card shadow-lg"
         style={{ color: continent?.color }}
         aria-label="Ver ranking de gols"
       >
